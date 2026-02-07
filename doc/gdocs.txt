@@ -1,0 +1,163 @@
+*gdocs.txt*  Edit Google Docs in Neovim
+
+Author:  Your Name
+License: MIT
+
+INTRODUCTION                                    *gdocs* *gdocs.nvim*
+
+gdocs.nvim allows you to edit Google Docs directly in Neovim using
+Markdown syntax. Changes are synced automatically to Google Docs.
+
+REQUIREMENTS                                    *gdocs-requirements*
+
+- Neovim >= 0.8
+- Python 3.8+
+- Google Cloud project with Docs API enabled
+- OAuth 2.0 credentials (Desktop app)
+
+INSTALLATION                                    *gdocs-installation*
+
+Using lazy.nvim: >lua
+    {
+      "username/gdocs.nvim",
+      build = "pip install -r python/requirements.txt",
+      config = function()
+        require("gdocs").setup()
+      end
+    }
+<
+
+Using packer.nvim: >lua
+    use {
+      "username/gdocs.nvim",
+      run = "pip install -r python/requirements.txt",
+      config = function()
+        require("gdocs").setup()
+      end
+    }
+<
+
+SETUP                                           *gdocs-setup*
+
+1. Create a Google Cloud project at https://console.cloud.google.com
+2. Enable the Google Docs API and Google Drive API
+3. Create OAuth 2.0 credentials (Application type: Desktop app)
+4. Download the credentials JSON file
+5. Run |:GDocsInfo| to find the data directory path
+6. Save the downloaded file as `credentials.json` in that directory
+7. Run |:GDocsAuth| to authenticate
+
+CONFIGURATION                                   *gdocs-config*
+
+>lua
+    require("gdocs").setup({
+      -- Auto-sync interval in milliseconds (0 to disable)
+      sync_interval = 5000,
+
+      -- Show notifications
+      notify = true,
+
+      -- Python executable
+      python_cmd = "python3",
+
+      -- Picker: "telescope", "fzf", or "native"
+      picker = "native",
+    })
+<
+
+COMMANDS                                        *gdocs-commands*
+
+                                                *:GDocsAuth*
+:GDocsAuth          Authenticate with Google. Opens a browser window
+                    for the OAuth flow. Required before using other
+                    commands.
+
+                                                *:GDocsList*
+:GDocsList          List your Google Docs. Opens a picker to select
+                    and open a document.
+
+                                                *:GDocsOpen*
+:GDocsOpen [id]     Open a Google Doc by its document ID. If no ID
+                    is provided, shows the document list.
+
+                                                *:GDocsNew*
+:GDocsNew [title]   Create a new Google Doc. If no title is provided,
+                    prompts for one.
+
+                                                *:GDocsPush*
+:GDocsPush          Push current buffer contents to Google Docs.
+                    Also triggered by |:w| on gdocs buffers.
+
+                                                *:GDocsPull*
+:GDocsPull          Pull latest content from Google Docs, replacing
+                    buffer contents.
+
+                                                *:GDocsInfo*
+:GDocsInfo          Show the data directory path where credentials
+                    and tokens are stored.
+
+FORMATTING                                      *gdocs-formatting*
+
+Documents are edited as Markdown with the following mappings:
+
+  Google Docs          Markdown
+  ─────────────────────────────────────
+  Heading 1-6          # to ######
+  Bold                 **text**
+  Italic               *text*
+  Strikethrough        ~~text~~
+  Bullet list          - item
+  Numbered list        1. item
+  Links                [text](url)
+  Tables               GFM table syntax
+
+AUTO-SYNC                                       *gdocs-sync*
+
+When `sync_interval` is set (default: 5000ms), changes are
+automatically pushed to Google Docs after a period of inactivity.
+
+You can also manually sync with |:GDocsPush| and |:GDocsPull|.
+
+STATUSLINE                                      *gdocs-statusline*
+
+Buffer-local variables are set for statusline integration:
+
+  b:gdocs_title       Document title
+  b:gdocs_id          Document ID
+  b:gdocs_sync_status "synced", "syncing", or "error"
+
+Example for lualine: >lua
+    {
+      function()
+        local status = vim.b.gdocs_sync_status or ""
+        local icon = ({
+          synced = "✓",
+          syncing = "↻",
+          error = "✗"
+        })[status] or ""
+        return icon .. " " .. (vim.b.gdocs_title or "")
+      end,
+      cond = function()
+        return vim.b.gdocs_id ~= nil
+      end
+    }
+<
+
+HEALTH CHECK                                    *gdocs-health*
+
+Run |:checkhealth| gdocs to verify your setup.
+
+TROUBLESHOOTING                                 *gdocs-troubleshooting*
+
+"credentials.json not found"
+    Download OAuth credentials from Google Cloud Console and save
+    to the path shown by |:GDocsInfo|.
+
+"Not authenticated"
+    Run |:GDocsAuth| to complete the OAuth flow.
+
+"Server exited with error"
+    Check that Python dependencies are installed:
+    `pip install -r python/requirements.txt`
+
+vim:tw=72:ts=8:ft=help:norl:
