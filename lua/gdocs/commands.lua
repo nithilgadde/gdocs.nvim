@@ -2,9 +2,10 @@
 
 local M = {}
 
-local gdocs = require("gdocs")
-local rpc = require("gdocs.rpc")
-local buffer = require("gdocs.buffer")
+-- Lazy load to avoid circular dependency issues
+local function get_gdocs() return require("gdocs") end
+local function get_rpc() return require("gdocs.rpc") end
+local function get_buffer() return require("gdocs.buffer") end
 
 function M.setup()
   vim.api.nvim_create_user_command("GDocsAuth", M.auth, {
@@ -39,26 +40,26 @@ function M.setup()
 end
 
 function M.auth()
-  gdocs.notify("Starting authentication...")
+  get_gdocs().notify("Starting authentication...")
 
-  rpc.call("auth", {}, function(result, err)
+  get_rpc().call("auth", {}, function(result, err)
     vim.schedule(function()
       if err then
-        gdocs.notify("Auth error: " .. err, vim.log.levels.ERROR)
+        get_gdocs().notify("Auth error: " .. err, vim.log.levels.ERROR)
       elseif result and result.success then
-        gdocs.notify(result.message or "Authenticated!")
+        get_gdocs().notify(result.message or "Authenticated!")
       else
-        gdocs.notify(result and result.error or "Authentication failed", vim.log.levels.ERROR)
+        get_gdocs().notify(result and result.error or "Authentication failed", vim.log.levels.ERROR)
       end
     end)
   end)
 end
 
 function M.list()
-  rpc.call("is_authenticated", {}, function(result, err)
+  get_rpc().call("is_authenticated", {}, function(result, err)
     vim.schedule(function()
       if err or not result or not result.authenticated then
-        gdocs.notify("Not authenticated. Run :GDocsAuth first.", vim.log.levels.WARN)
+        get_gdocs().notify("Not authenticated. Run :GDocsAuth first.", vim.log.levels.WARN)
         return
       end
       M._fetch_and_show_list()
@@ -67,23 +68,23 @@ function M.list()
 end
 
 function M._fetch_and_show_list()
-  gdocs.notify("Fetching documents...")
+  get_gdocs().notify("Fetching documents...")
 
-  rpc.call("list", { max_results = 50 }, function(result, err)
+  get_rpc().call("list", { max_results = 50 }, function(result, err)
     vim.schedule(function()
       if err then
-        gdocs.notify("Error: " .. err, vim.log.levels.ERROR)
+        get_gdocs().notify("Error: " .. err, vim.log.levels.ERROR)
         return
       end
 
       if not result or not result.success then
-        gdocs.notify(result and result.error or "Failed to list documents", vim.log.levels.ERROR)
+        get_gdocs().notify(result and result.error or "Failed to list documents", vim.log.levels.ERROR)
         return
       end
 
       local docs = result.documents or {}
       if #docs == 0 then
-        gdocs.notify("No documents found")
+        get_gdocs().notify("No documents found")
         return
       end
 
@@ -93,7 +94,7 @@ function M._fetch_and_show_list()
 end
 
 function M._show_picker(docs)
-  local picker = gdocs.config.picker
+  local picker = get_gdocs().config.picker
 
   if picker == "telescope" and pcall(require, "telescope") then
     M._telescope_picker(docs)
@@ -180,22 +181,22 @@ function M._fzf_picker(docs)
 end
 
 function M._open_doc(doc_id)
-  gdocs.notify("Opening document...")
+  get_gdocs().notify("Opening document...")
 
-  rpc.call("get", { doc_id = doc_id }, function(result, err)
+  get_rpc().call("get", { doc_id = doc_id }, function(result, err)
     vim.schedule(function()
       if err then
-        gdocs.notify("Error: " .. err, vim.log.levels.ERROR)
+        get_gdocs().notify("Error: " .. err, vim.log.levels.ERROR)
         return
       end
 
       if not result or not result.success then
-        gdocs.notify(result and result.error or "Failed to open document", vim.log.levels.ERROR)
+        get_gdocs().notify(result and result.error or "Failed to open document", vim.log.levels.ERROR)
         return
       end
 
-      buffer.create(result.id, result.title, result.content, result.revision)
-      gdocs.notify("Opened: " .. result.title)
+      get_buffer().create(result.id, result.title, result.content, result.revision)
+      get_gdocs().notify("Opened: " .. result.title)
     end)
   end)
 end
@@ -227,22 +228,22 @@ function M.new(opts)
 end
 
 function M._create_doc(title)
-  gdocs.notify("Creating document...")
+  get_gdocs().notify("Creating document...")
 
-  rpc.call("create", { title = title }, function(result, err)
+  get_rpc().call("create", { title = title }, function(result, err)
     vim.schedule(function()
       if err then
-        gdocs.notify("Error: " .. err, vim.log.levels.ERROR)
+        get_gdocs().notify("Error: " .. err, vim.log.levels.ERROR)
         return
       end
 
       if not result or not result.success then
-        gdocs.notify(result and result.error or "Failed to create document", vim.log.levels.ERROR)
+        get_gdocs().notify(result and result.error or "Failed to create document", vim.log.levels.ERROR)
         return
       end
 
-      buffer.create(result.id, result.title, "", "")
-      gdocs.notify("Created: " .. result.title)
+      get_buffer().create(result.id, result.title, "", "")
+      get_gdocs().notify("Created: " .. result.title)
     end)
   end)
 end
@@ -258,20 +259,20 @@ function M.pull()
 end
 
 function M.info()
-  gdocs.notify("Calling data_dir...")
-  rpc.call("data_dir", {}, function(result, err)
+  get_gdocs().notify("Calling data_dir...")
+  get_rpc().call("data_dir", {}, function(result, err)
     vim.schedule(function()
-      gdocs.notify("Got response")
+      get_gdocs().notify("Got response")
       if err then
-        gdocs.notify("Error: " .. err, vim.log.levels.ERROR)
+        get_gdocs().notify("Error: " .. err, vim.log.levels.ERROR)
         return
       end
 
       if result and result.path then
-        gdocs.notify("Data directory: " .. result.path)
-        gdocs.notify("Place your credentials.json file there")
+        get_gdocs().notify("Data directory: " .. result.path)
+        get_gdocs().notify("Place your credentials.json file there")
       else
-        gdocs.notify("No result returned", vim.log.levels.WARN)
+        get_gdocs().notify("No result returned", vim.log.levels.WARN)
       end
     end)
   end)

@@ -2,7 +2,7 @@
 
 local M = {}
 
-local gdocs = require("gdocs")
+local function get_gdocs() return require("gdocs") end
 
 -- Pending requests waiting for response
 M._pending = {}
@@ -15,6 +15,7 @@ function M.start_server()
     return true
   end
 
+  local gdocs = get_gdocs()
   local plugin_path = gdocs.get_plugin_path()
   local server_path = plugin_path .. "/python/gdocs_server.py"
 
@@ -24,21 +25,19 @@ function M.start_server()
     return false
   end
 
-  gdocs.notify("Starting server: " .. gdocs.config.python_cmd .. " " .. server_path, vim.log.levels.DEBUG)
-
   M._job = vim.fn.jobstart({ gdocs.config.python_cmd, server_path }, {
     on_stdout = function(_, data)
       M._on_stdout(data)
     end,
     on_stderr = function(_, data)
       if data and #data > 0 and data[1] ~= "" then
-        gdocs.notify("Server error: " .. table.concat(data, "\n"), vim.log.levels.ERROR)
+        get_gdocs().notify("Server error: " .. table.concat(data, "\n"), vim.log.levels.ERROR)
       end
     end,
     on_exit = function(_, code)
       M._job = nil
       if code ~= 0 then
-        gdocs.notify("Server exited with code: " .. code, vim.log.levels.WARN)
+        get_gdocs().notify("Server exited with code: " .. code, vim.log.levels.WARN)
       end
     end,
     stdin = "pipe",
