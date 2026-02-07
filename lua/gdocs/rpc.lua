@@ -24,6 +24,8 @@ function M.start_server()
     return false
   end
 
+  gdocs.notify("Starting server: " .. gdocs.config.python_cmd .. " " .. server_path, vim.log.levels.DEBUG)
+
   M._job = vim.fn.jobstart({ gdocs.config.python_cmd, server_path }, {
     on_stdout = function(_, data)
       M._on_stdout(data)

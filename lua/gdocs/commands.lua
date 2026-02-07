@@ -258,8 +258,10 @@ function M.pull()
 end
 
 function M.info()
+  gdocs.notify("Calling data_dir...")
   rpc.call("data_dir", {}, function(result, err)
     vim.schedule(function()
+      gdocs.notify("Got response")
       if err then
         gdocs.notify("Error: " .. err, vim.log.levels.ERROR)
         return
@@ -268,6 +270,8 @@ function M.info()
       if result and result.path then
         gdocs.notify("Data directory: " .. result.path)
         gdocs.notify("Place your credentials.json file there")
+      else
+        gdocs.notify("No result returned", vim.log.levels.WARN)
       end
     end)
   end)
