@@ -6,6 +6,11 @@ JSON-RPC server that handles Google Docs API operations and
 bidirectional Markdown conversion.
 """
 
+from __future__ import annotations
+
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 import json
 import os
 import sys
