@@ -10,21 +10,25 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 
 # Ensure user site-packages is in path (for Neovim subprocess)
 # Try multiple methods to find user packages
+home = os.path.expanduser("~")
+if not home or home == "~":
+    home = os.environ.get("HOME", "/home/nit")
+
 user_site_paths = [
-    Path.home() / ".local/lib/python3.8/site-packages",
-    Path.home() / ".local/lib/python3.9/site-packages",
-    Path.home() / ".local/lib/python3.10/site-packages",
-    Path.home() / ".local/lib/python3.11/site-packages",
-    Path.home() / ".local/lib/python3.12/site-packages",
+    os.path.join(home, ".local/lib/python3.8/site-packages"),
+    os.path.join(home, ".local/lib/python3.9/site-packages"),
+    os.path.join(home, ".local/lib/python3.10/site-packages"),
+    os.path.join(home, ".local/lib/python3.11/site-packages"),
+    os.path.join(home, ".local/lib/python3.12/site-packages"),
+    "/home/nit/.local/lib/python3.8/site-packages",  # Fallback hardcoded
 ]
 
 for p in user_site_paths:
-    if p.exists() and str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+    if os.path.isdir(p) and p not in sys.path:
+        sys.path.insert(0, p)
 
 try:
     import site
@@ -33,6 +37,8 @@ try:
         sys.path.insert(0, user_site)
 except Exception:
     pass
+
+from pathlib import Path
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
