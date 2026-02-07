@@ -10,12 +10,29 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 # Ensure user site-packages is in path (for Neovim subprocess)
-import site
-user_site = site.getusersitepackages()
-if user_site not in sys.path:
-    sys.path.insert(0, user_site)
+# Try multiple methods to find user packages
+user_site_paths = [
+    Path.home() / ".local/lib/python3.8/site-packages",
+    Path.home() / ".local/lib/python3.9/site-packages",
+    Path.home() / ".local/lib/python3.10/site-packages",
+    Path.home() / ".local/lib/python3.11/site-packages",
+    Path.home() / ".local/lib/python3.12/site-packages",
+]
+
+for p in user_site_paths:
+    if p.exists() and str(p) not in sys.path:
+        sys.path.insert(0, str(p))
+
+try:
+    import site
+    user_site = site.getusersitepackages()
+    if user_site and user_site not in sys.path:
+        sys.path.insert(0, user_site)
+except Exception:
+    pass
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -23,14 +40,23 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import json
 import re
 import webbrowser
-from pathlib import Path
 from typing import Any, Optional
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+try:
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+except ImportError as e:
+    print(json.dumps({
+        "id": None,
+        "error": {
+            "code": -32603,
+            "message": f"Missing dependencies: {e}. Run: pip install google-api-python-client google-auth-oauthlib google-auth-httplib2. Python path: {sys.path}"
+        }
+    }))
+    sys.exit(1)
 
 SCOPES = [
     'https://www.googleapis.com/auth/documents',
