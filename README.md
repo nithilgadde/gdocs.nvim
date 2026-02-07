@@ -67,7 +67,7 @@ Since the app isn't verified by Google, you need to add yourself as a test user:
 ### 3. Install Credentials
 
 1. Run `:GDocsInfo` in Neovim to see the data directory path
-2. Save the downloaded JSON as `credentials.json` in that directory
+2. Save the downloaded JSON as `credentials.json` in that directory (make sure that .json file is named `credentials.json`.
 
 ### 4. Authenticate
 
