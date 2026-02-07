@@ -23,7 +23,7 @@ Edit Google Docs directly in Neovim using Markdown syntax with automatic syncing
 
 ```lua
 {
-  "username/gdocs.nvim",
+  "nithilgadde/gdocs.nvim",
   build = "pip install -r python/requirements.txt",
   config = function()
     require("gdocs").setup()
