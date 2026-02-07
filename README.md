@@ -35,7 +35,7 @@ Edit Google Docs directly in Neovim using Markdown syntax with automatic syncing
 
 ```lua
 use {
-  "username/gdocs.nvim",
+  "nithilgadde/gdocs.nvim",
   run = "pip install -r python/requirements.txt",
   config = function()
     require("gdocs").setup()
@@ -54,12 +54,22 @@ use {
 5. Select **Desktop app** as application type
 6. Download the JSON file
 
-### 2. Install Credentials
+### 2. Add Yourself as a Test User
+
+Since the app isn't verified by Google, you need to add yourself as a test user:
+
+1. In Google Cloud Console, go to **APIs & Services** → **OAuth consent screen**
+2. Make sure your app is in **Testing** mode (not Production)
+3. Scroll down to **Test users**
+4. Click **Add users**
+5. Enter your Gmail address and save
+
+### 3. Install Credentials
 
 1. Run `:GDocsInfo` in Neovim to see the data directory path
 2. Save the downloaded JSON as `credentials.json` in that directory
 
-### 3. Authenticate
+### 4. Authenticate
 
 Run `:GDocsAuth` - this opens a browser for Google login. After authenticating, you're ready to use the plugin.
 
