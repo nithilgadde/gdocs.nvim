@@ -8,12 +8,19 @@ bidirectional Markdown conversion.
 
 from __future__ import annotations
 
+import os
+import sys
+
+# Ensure user site-packages is in path (for Neovim subprocess)
+import site
+user_site = site.getusersitepackages()
+if user_site not in sys.path:
+    sys.path.insert(0, user_site)
+
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 import json
-import os
-import sys
 import re
 import webbrowser
 from pathlib import Path
