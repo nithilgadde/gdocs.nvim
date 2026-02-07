@@ -65,25 +65,25 @@ function M._on_stdout(data)
     return
   end
 
-  -- Accumulate data
-  for _, chunk in ipairs(data) do
-    M._buffer = M._buffer .. chunk
-  end
+  -- Debug: show what we receive
+  get_gdocs().notify("RPC recv: " .. vim.inspect(data), vim.log.levels.DEBUG)
 
-  -- Process complete lines
-  while true do
-    local newline_pos = M._buffer:find("\n")
-    if not newline_pos then
-      break
-    end
-
-    local line = M._buffer:sub(1, newline_pos - 1)
-    M._buffer = M._buffer:sub(newline_pos + 1)
-
-    if line ~= "" then
-      local ok, response = pcall(vim.json.decode, line)
+  -- jobstart splits output by newlines, so each element except last is a complete line
+  for i, chunk in ipairs(data) do
+    if chunk ~= "" then
+      local ok, response = pcall(vim.json.decode, chunk)
       if ok and response then
+        get_gdocs().notify("RPC parsed: " .. vim.inspect(response), vim.log.levels.DEBUG)
         M._handle_response(response)
+      else
+        -- Might be partial data, accumulate
+        M._buffer = M._buffer .. chunk
+        -- Try to parse accumulated buffer
+        ok, response = pcall(vim.json.decode, M._buffer)
+        if ok and response then
+          M._handle_response(response)
+          M._buffer = ""
+        end
       end
     end
   end
