@@ -55,7 +55,7 @@ try:
     from googleapiclient.discovery import build
     from googleapiclient.errors import HttpError
 except ImportError as e:
-    err_msg = f"Missing dependencies: {e}. Run: pip install google-api-python-client google-auth-oauthlib google-auth-httplib2. Python path: {sys.path}"
+    err_msg = f"Missing dependencies: {e}. Python: {sys.executable}, HOME: {os.environ.get('HOME', 'NOT SET')}, Path: {sys.path[:3]}"
     print(err_msg, file=sys.stderr)
     sys.stdout.write(json.dumps({
         "id": None,
