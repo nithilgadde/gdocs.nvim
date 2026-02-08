@@ -1,10 +1,7 @@
--- gdocs.nvim - RPC communication with Python backend
-
 local M = {}
 
 local function get_gdocs() return require("gdocs") end
 
--- Pending requests waiting for response
 M._pending = {}
 M._request_id = 0
 M._job = nil
@@ -19,7 +16,6 @@ function M.start_server()
   local plugin_path = gdocs.get_plugin_path()
   local server_path = plugin_path .. "/python/gdocs_server.py"
 
-  -- Check if server script exists
   if vim.fn.filereadable(server_path) == 0 then
     gdocs.notify("Server script not found: " .. server_path, vim.log.levels.ERROR)
     return false
@@ -65,20 +61,13 @@ function M._on_stdout(data)
     return
   end
 
-  -- Debug: show what we receive
-  get_gdocs().notify("RPC recv: " .. vim.inspect(data), vim.log.levels.DEBUG)
-
-  -- jobstart splits output by newlines, so each element except last is a complete line
   for i, chunk in ipairs(data) do
     if chunk ~= "" then
       local ok, response = pcall(vim.json.decode, chunk)
       if ok and response then
-        get_gdocs().notify("RPC parsed: " .. vim.inspect(response), vim.log.levels.DEBUG)
         M._handle_response(response)
       else
-        -- Might be partial data, accumulate
         M._buffer = M._buffer .. chunk
-        -- Try to parse accumulated buffer
         ok, response = pcall(vim.json.decode, M._buffer)
         if ok and response then
           M._handle_response(response)
@@ -127,7 +116,6 @@ function M.call(method, params, callback)
   vim.fn.chansend(M._job, request .. "\n")
 end
 
--- Synchronous call (blocking)
 function M.call_sync(method, params, timeout_ms)
   timeout_ms = timeout_ms or 10000
 
@@ -141,7 +129,6 @@ function M.call_sync(method, params, timeout_ms)
     done = true
   end)
 
-  -- Wait for response
   local start = vim.loop.now()
   while not done do
     vim.wait(10, function()

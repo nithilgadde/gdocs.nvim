@@ -1,43 +1,29 @@
--- gdocs.nvim - Edit Google Docs in Neovim
--- Main entry point
-
 local M = {}
 
 M.config = {
-  -- Auto-sync interval in milliseconds (0 to disable)
   sync_interval = 5000,
-  -- Show notifications
   notify = true,
-  -- Python executable
   python_cmd = "python3",
-  -- Picker: "telescope", "fzf", or "native"
   picker = "native",
 }
 
--- Internal state
 M._state = {
   initialized = false,
   server_job = nil,
-  buffers = {}, -- doc_id -> bufnr mapping
-  revisions = {}, -- doc_id -> last known revision
+  buffers = {},
+  revisions = {},
 }
 
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.config, opts or {})
-
-  -- Register commands
   require("gdocs.commands").setup()
-
-  -- Set up autocommands
   M._setup_autocommands()
-
   M._state.initialized = true
 end
 
 function M._setup_autocommands()
   local group = vim.api.nvim_create_augroup("GDocs", { clear = true })
 
-  -- Auto-sync on buffer write
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     group = group,
     pattern = "gdocs://*",
@@ -46,7 +32,6 @@ function M._setup_autocommands()
     end,
   })
 
-  -- Clean up on buffer delete
   vim.api.nvim_create_autocmd("BufDelete", {
     group = group,
     pattern = "gdocs://*",
@@ -55,7 +40,6 @@ function M._setup_autocommands()
     end,
   })
 
-  -- Start auto-sync timer when entering a gdocs buffer
   vim.api.nvim_create_autocmd("BufEnter", {
     group = group,
     pattern = "gdocs://*",
@@ -66,7 +50,6 @@ function M._setup_autocommands()
     end,
   })
 
-  -- Stop auto-sync timer when leaving a gdocs buffer
   vim.api.nvim_create_autocmd("BufLeave", {
     group = group,
     pattern = "gdocs://*",

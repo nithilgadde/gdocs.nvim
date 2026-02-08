@@ -1,8 +1,5 @@
--- gdocs.nvim - User commands
-
 local M = {}
 
--- Lazy load to avoid circular dependency issues
 local function get_gdocs() return require("gdocs") end
 local function get_rpc() return require("gdocs.rpc") end
 local function get_buffer() return require("gdocs.buffer") end
@@ -205,7 +202,6 @@ function M.open(opts)
   local doc_id = opts.args
 
   if not doc_id or doc_id == "" then
-    -- If no ID provided, show list
     M.list()
     return
   end
@@ -259,10 +255,8 @@ function M.pull()
 end
 
 function M.info()
-  get_gdocs().notify("Calling data_dir...")
   get_rpc().call("data_dir", {}, function(result, err)
     vim.schedule(function()
-      get_gdocs().notify("Got response")
       if err then
         get_gdocs().notify("Error: " .. err, vim.log.levels.ERROR)
         return

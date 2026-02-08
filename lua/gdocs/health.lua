@@ -1,5 +1,3 @@
--- gdocs.nvim - Health check
-
 local M = {}
 
 local health = vim.health or require("health")
@@ -11,21 +9,18 @@ local error = health.error or health.report_error
 function M.check()
   start("gdocs.nvim")
 
-  -- Check Neovim version
   if vim.fn.has("nvim-0.8") == 1 then
     ok("Neovim >= 0.8")
   else
     error("Neovim >= 0.8 required")
   end
 
-  -- Check Python
   local gdocs = require("gdocs")
   local python_cmd = gdocs.config.python_cmd
 
   if vim.fn.executable(python_cmd) == 1 then
     ok(python_cmd .. " is executable")
 
-    -- Check Python version
     local handle = io.popen(python_cmd .. " --version 2>&1")
     if handle then
       local result = handle:read("*a")
@@ -36,7 +31,6 @@ function M.check()
     error(python_cmd .. " not found in PATH")
   end
 
-  -- Check dependencies
   local check_module = python_cmd .. " -c 'import %s' 2>&1"
 
   local modules = {
@@ -55,7 +49,6 @@ function M.check()
     end
   end
 
-  -- Check credentials file
   local plugin_path = gdocs.get_plugin_path()
   local rpc = require("gdocs.rpc")
 
@@ -80,7 +73,6 @@ function M.check()
     end)
   end)
 
-  -- Check optional dependencies
   if pcall(require, "telescope") then
     ok("telescope.nvim available")
   else

@@ -1,16 +1,12 @@
--- gdocs.nvim - Sync logic
-
 local M = {}
 
--- Lazy load to avoid circular dependency issues
 local function get_gdocs() return require("gdocs") end
 local function get_rpc() return require("gdocs.rpc") end
 local function get_buffer() return require("gdocs.buffer") end
 
--- Timers for each buffer
-M._timers = {} -- bufnr -> timer
-M._dirty = {} -- bufnr -> bool (has unsaved changes)
-M._last_sync = {} -- bufnr -> timestamp
+M._timers = {}
+M._dirty = {}
+M._last_sync = {}
 
 function M.push(bufnr)
   local buffer = get_buffer()
@@ -37,7 +33,6 @@ function M.push(bufnr)
         return
       end
 
-      -- Update revision and mark as synced
       M._fetch_revision(bufnr, doc_id)
       vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
       get_buffer().set_sync_status(bufnr, "synced")
@@ -124,7 +119,6 @@ function M.start_timer(bufnr)
     return
   end
 
-  -- Track changes
   vim.api.nvim_buf_attach(bufnr, false, {
     on_lines = function()
       M._dirty[bufnr] = true
@@ -161,12 +155,10 @@ function M._auto_sync(bufnr)
     return
   end
 
-  -- Only sync if there are changes
   if not M._dirty[bufnr] then
     return
   end
 
-  -- Debounce: don't sync if we just synced
   local last = M._last_sync[bufnr] or 0
   local now = vim.loop.now()
   if now - last < get_gdocs().config.sync_interval then

@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-"""
-Google Docs Neovim Backend Server
-
-JSON-RPC server that handles Google Docs API operations and
-bidirectional Markdown conversion.
-"""
 
 from __future__ import annotations
 
 import os
 import sys
 
-# Ensure user site-packages is in path (for Neovim subprocess)
-# Try multiple methods to find user packages
 home = os.path.expanduser("~")
 if not home or home == "~":
     home = os.environ.get("HOME", "/home/nit")
@@ -23,7 +15,7 @@ user_site_paths = [
     os.path.join(home, ".local/lib/python3.10/site-packages"),
     os.path.join(home, ".local/lib/python3.11/site-packages"),
     os.path.join(home, ".local/lib/python3.12/site-packages"),
-    "/home/nit/.local/lib/python3.8/site-packages",  # Fallback hardcoded
+    "/home/nit/.local/lib/python3.8/site-packages",
 ]
 
 for p in user_site_paths:
@@ -73,7 +65,6 @@ DATA_DIR = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) /
 
 
 class GoogleDocsClient:
-    """Handles Google Docs API operations."""
 
     def __init__(self):
         self.creds: Optional[Credentials] = None
@@ -93,12 +84,10 @@ class GoogleDocsClient:
         return DATA_DIR / 'token.json'
 
     def is_authenticated(self) -> bool:
-        """Check if we have valid credentials."""
         self._load_credentials()
         return self.creds is not None and self.creds.valid
 
     def _load_credentials(self):
-        """Load credentials from token file."""
         if self.token_path.exists():
             self.creds = Credentials.from_authorized_user_file(str(self.token_path), SCOPES)
 
@@ -110,13 +99,11 @@ class GoogleDocsClient:
                 self.creds = None
 
     def _save_credentials(self):
-        """Save credentials to token file."""
         if self.creds:
             with open(self.token_path, 'w') as f:
                 f.write(self.creds.to_json())
 
     def authenticate(self) -> dict:
-        """Run OAuth flow to authenticate user."""
         if not self.credentials_path.exists():
             return {
                 'success': False,
@@ -135,13 +122,11 @@ class GoogleDocsClient:
             return {'success': False, 'error': str(e)}
 
     def _init_services(self):
-        """Initialize Google API services."""
         if self.creds and self.creds.valid:
             self.docs_service = build('docs', 'v1', credentials=self.creds)
             self.drive_service = build('drive', 'v3', credentials=self.creds)
 
     def ensure_authenticated(self) -> bool:
-        """Ensure we're authenticated, return False if not."""
         if not self.is_authenticated():
             self._load_credentials()
         if self.creds and self.creds.valid:
@@ -150,7 +135,6 @@ class GoogleDocsClient:
         return False
 
     def list_documents(self, max_results: int = 50) -> dict:
-        """List user's Google Docs."""
         if not self.ensure_authenticated():
             return {'success': False, 'error': 'Not authenticated. Run :GDocsAuth first.'}
 
@@ -174,7 +158,6 @@ class GoogleDocsClient:
             return {'success': False, 'error': str(e)}
 
     def get_document(self, doc_id: str) -> dict:
-        """Fetch a document and convert to Markdown."""
         if not self.ensure_authenticated():
             return {'success': False, 'error': 'Not authenticated. Run :GDocsAuth first.'}
 
@@ -192,7 +175,6 @@ class GoogleDocsClient:
             return {'success': False, 'error': str(e)}
 
     def create_document(self, title: str) -> dict:
-        """Create a new Google Doc."""
         if not self.ensure_authenticated():
             return {'success': False, 'error': 'Not authenticated. Run :GDocsAuth first.'}
 
@@ -207,15 +189,12 @@ class GoogleDocsClient:
             return {'success': False, 'error': str(e)}
 
     def update_document(self, doc_id: str, markdown: str) -> dict:
-        """Update a document from Markdown content."""
         if not self.ensure_authenticated():
             return {'success': False, 'error': 'Not authenticated. Run :GDocsAuth first.'}
 
         try:
-            # Get current document to find content length
             doc = self.docs_service.documents().get(documentId=doc_id).execute()
 
-            # Calculate end index (subtract 1 for the final newline Google Docs adds)
             body_content = doc.get('body', {}).get('content', [])
             end_index = 1
             for element in body_content:
@@ -224,7 +203,6 @@ class GoogleDocsClient:
 
             requests = []
 
-            # Delete existing content (if any beyond the initial newline)
             if end_index > 2:
                 requests.append({
                     'deleteContentRange': {
@@ -235,7 +213,6 @@ class GoogleDocsClient:
                     }
                 })
 
-            # Convert markdown to Google Docs requests
             insert_requests = self._markdown_to_requests(markdown)
             requests.extend(insert_requests)
 
@@ -250,7 +227,6 @@ class GoogleDocsClient:
             return {'success': False, 'error': str(e)}
 
     def get_revision(self, doc_id: str) -> dict:
-        """Get current revision ID of a document."""
         if not self.ensure_authenticated():
             return {'success': False, 'error': 'Not authenticated. Run :GDocsAuth first.'}
 
@@ -264,7 +240,6 @@ class GoogleDocsClient:
             return {'success': False, 'error': str(e)}
 
     def _doc_to_markdown(self, doc: dict) -> str:
-        """Convert Google Docs JSON to Markdown."""
         content = doc.get('body', {}).get('content', [])
         lists = doc.get('lists', {})
         markdown_lines = []
@@ -283,7 +258,6 @@ class GoogleDocsClient:
         return '\n'.join(markdown_lines)
 
     def _paragraph_to_markdown(self, para: dict, lists: dict) -> str:
-        """Convert a paragraph to Markdown."""
         style = para.get('paragraphStyle', {}).get('namedStyleType', 'NORMAL_TEXT')
         bullet = para.get('bullet')
         elements = para.get('elements', [])
@@ -295,7 +269,6 @@ class GoogleDocsClient:
 
         text = ''.join(text_parts).rstrip('\n')
 
-        # Handle headings
         heading_map = {
             'HEADING_1': '# ',
             'HEADING_2': '## ',
@@ -309,7 +282,6 @@ class GoogleDocsClient:
 
         prefix = heading_map.get(style, '')
 
-        # Handle lists
         if bullet:
             list_id = bullet.get('listId')
             nesting_level = bullet.get('nestingLevel', 0)
@@ -330,21 +302,18 @@ class GoogleDocsClient:
         return prefix + text
 
     def _text_run_to_markdown(self, text_run: dict) -> str:
-        """Convert a text run to Markdown with formatting."""
         content = text_run.get('content', '')
         style = text_run.get('textStyle', {})
 
         if not content or content == '\n':
             return content
 
-        # Preserve trailing newline
         trailing_newline = content.endswith('\n')
         content = content.rstrip('\n')
 
         if not content:
             return '\n' if trailing_newline else ''
 
-        # Apply formatting
         if style.get('bold'):
             content = f'**{content}**'
         if style.get('italic'):
@@ -361,7 +330,6 @@ class GoogleDocsClient:
         return content
 
     def _table_to_markdown(self, table: dict) -> str:
-        """Convert a table to GitHub-flavored Markdown."""
         rows = table.get('tableRows', [])
         if not rows:
             return ''
@@ -382,7 +350,6 @@ class GoogleDocsClient:
 
             md_rows.append('| ' + ' | '.join(cell_texts) + ' |')
 
-            # Add header separator after first row
             if i == 0:
                 separator = '| ' + ' | '.join(['---'] * len(cell_texts)) + ' |'
                 md_rows.append(separator)
@@ -390,11 +357,9 @@ class GoogleDocsClient:
         return '\n'.join(md_rows)
 
     def _markdown_to_requests(self, markdown: str) -> list:
-        """Convert Markdown to Google Docs API requests."""
         requests = []
         lines = markdown.split('\n')
 
-        # Process in reverse to maintain correct indices
         current_index = 1
         text_to_insert = []
         formatting_requests = []
@@ -404,14 +369,12 @@ class GoogleDocsClient:
             prefix = ''
             style_type = None
 
-            # Detect headings
             heading_match = re.match(r'^(#{1,6})\s+(.*)$', line)
             if heading_match:
                 level = len(heading_match.group(1))
                 line = heading_match.group(2)
                 style_type = f'HEADING_{level}'
 
-            # Detect lists
             bullet_match = re.match(r'^(\s*)[-*]\s+(.*)$', line)
             numbered_match = re.match(r'^(\s*)\d+\.\s+(.*)$', line)
 
@@ -424,14 +387,12 @@ class GoogleDocsClient:
                 line = numbered_match.group(2)
                 prefix = '1. '
 
-            # Process inline formatting
             processed_line, inline_formats = self._process_inline_markdown(line)
             full_line = prefix + processed_line + '\n'
 
             start_index = current_index
             text_to_insert.append(full_line)
 
-            # Adjust formatting indices
             prefix_len = len(prefix)
             for fmt in inline_formats:
                 formatting_requests.append({
@@ -440,7 +401,6 @@ class GoogleDocsClient:
                     'style': fmt['style']
                 })
 
-            # Add paragraph style
             if style_type:
                 formatting_requests.append({
                     'paragraph_style': style_type,
@@ -450,7 +410,6 @@ class GoogleDocsClient:
 
             current_index += len(full_line)
 
-        # Create insert request
         full_text = ''.join(text_to_insert)
         if full_text:
             requests.append({
@@ -460,7 +419,6 @@ class GoogleDocsClient:
                 }
             })
 
-        # Create formatting requests
         for fmt in formatting_requests:
             if 'paragraph_style' in fmt:
                 requests.append({
@@ -508,21 +466,18 @@ class GoogleDocsClient:
         return requests
 
     def _process_inline_markdown(self, text: str) -> tuple[str, list]:
-        """Process inline Markdown formatting, return plain text and format ranges."""
         formats = []
         result = text
         offset = 0
 
-        # Process bold **text**
         for match in re.finditer(r'\*\*(.+?)\*\*', text):
             start = match.start() - offset
             content = match.group(1)
             end = start + len(content)
             result = result[:start] + content + result[start + len(match.group(0)):]
             formats.append({'start': start, 'end': end, 'style': 'bold'})
-            offset += 4  # Remove 4 asterisks
+            offset += 4
 
-        # Process italic *text* (but not bold)
         text = result
         offset = 0
         for match in re.finditer(r'(?<!\*)\*([^*]+?)\*(?!\*)', text):
@@ -533,7 +488,6 @@ class GoogleDocsClient:
             formats.append({'start': start, 'end': end, 'style': 'italic'})
             offset += 2
 
-        # Process strikethrough ~~text~~
         text = result
         offset = 0
         for match in re.finditer(r'~~(.+?)~~', text):
@@ -544,7 +498,6 @@ class GoogleDocsClient:
             formats.append({'start': start, 'end': end, 'style': 'strikethrough'})
             offset += 4
 
-        # Process links [text](url)
         text = result
         offset = 0
         for match in re.finditer(r'\[([^\]]+)\]\(([^)]+)\)', text):
@@ -560,7 +513,6 @@ class GoogleDocsClient:
 
 
 class RPCServer:
-    """JSON-RPC server for Neovim communication."""
 
     def __init__(self):
         self.client = GoogleDocsClient()
@@ -577,7 +529,6 @@ class RPCServer:
         }
 
     def handle_request(self, request: dict) -> dict:
-        """Handle a JSON-RPC request."""
         method = request.get('method', '')
         params = request.get('params', {})
         req_id = request.get('id')
@@ -604,7 +555,6 @@ class RPCServer:
             }
 
     def run(self):
-        """Run the RPC server, reading from stdin and writing to stdout."""
         while True:
             try:
                 line = sys.stdin.readline()
