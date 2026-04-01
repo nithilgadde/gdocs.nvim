@@ -80,12 +80,38 @@ Run `:GDocsAuth` - this opens a browser for Google login. After authenticating, 
 | Command | Description |
 |---------|-------------|
 | `:GDocsAuth` | Authenticate with Google |
-| `:GDocsList` | Browse and open your documents |
+| `:GDocsList [flags]` | Browse and open your documents (see below) |
 | `:GDocsOpen [id]` | Open a document by ID |
 | `:GDocsNew [title]` | Create a new document |
 | `:GDocsPush` | Push changes to Google Docs |
 | `:GDocsPull` | Pull latest from Google Docs |
 | `:GDocsInfo` | Show data directory path |
+
+### Listing Documents
+
+By default `:GDocsList` searches across all documents you have access to. You
+can narrow the search using optional flags:
+
+| Flag | Description |
+|------|-------------|
+| `--drive="name"` | Search in a shared/team drive by name |
+| `--path=folder/path` | Slash-separated folder path inside the drive |
+
+**Examples:**
+
+```vim
+" List all documents (default)
+:GDocsList
+
+" List documents from a shared drive
+:GDocsList --drive="Team Drive"
+
+" List documents in a specific folder on your personal drive
+:GDocsList --path=Projects/Reports
+
+" List documents in a specific folder on a shared drive
+:GDocsList --drive="Team Drive" --path=Docs/Specs
+```
 
 ### Editing
 
