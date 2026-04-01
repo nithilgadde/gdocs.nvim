@@ -73,8 +73,25 @@ COMMANDS                                        *gdocs-commands*
                     commands.
 
                                                 *:GDocsList*
-:GDocsList          List your Google Docs. Opens a picker to select
+:GDocsList [{flags}]
+                    List your Google Docs. Opens a picker to select
                     and open a document.
+
+                    Optional flags:
+
+                    --drive="name"   Search in a shared/team drive by
+                                     name. Use "My Drive" for the
+                                     personal drive (default).
+                    --path=path      Slash-separated folder path
+                                     inside the drive, e.g.
+                                     "Projects/Reports".
+
+                    Examples: >
+                      :GDocsList
+                      :GDocsList --drive="Team Drive"
+                      :GDocsList --path=Projects/Reports
+                      :GDocsList --drive="Team Drive" --path=Docs
+<
 
                                                 *:GDocsOpen*
 :GDocsOpen [id]     Open a Google Doc by its document ID. If no ID

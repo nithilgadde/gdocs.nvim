@@ -134,16 +134,117 @@ class GoogleDocsClient:
             return True
         return False
 
-    def list_documents(self, max_results: int = 50) -> dict:
+    def _resolve_drive_id(self, drive_name: str) -> Optional[str]:
+        """Resolve a shared/team drive name to its drive ID. Returns None for 'My Drive'."""
+        if not drive_name or drive_name.lower() in ('my drive', 'mydrive'):
+            return None
+
+        page_token = None
+        while True:
+            resp = self.drive_service.drives().list(
+                pageSize=100,
+                pageToken=page_token,
+                fields="nextPageToken, drives(id, name)"
+            ).execute()
+            for d in resp.get('drives', []):
+                if d['name'].lower() == drive_name.lower():
+                    return d['id']
+            page_token = resp.get('nextPageToken')
+            if not page_token:
+                break
+        return None
+
+    def _resolve_folder_by_path(self, path: str, drive_id: Optional[str] = None) -> Optional[str]:
+        """Walk a slash-separated path and return the folder ID of the final segment."""
+        parts = [p for p in path.strip('/').split('/') if p]
+        if not parts:
+            return None
+
+        parent_id = drive_id if drive_id else 'root'
+
+        extra_kwargs: dict[str, Any] = {}
+        if drive_id:
+            extra_kwargs['corpora'] = 'drive'
+            extra_kwargs['driveId'] = drive_id
+            extra_kwargs['includeItemsFromAllDrives'] = True
+            extra_kwargs['supportsAllDrives'] = True
+
+        for folder_name in parts:
+            q = (
+                f"name = '{folder_name}' "
+                f"and '{parent_id}' in parents "
+                f"and mimeType = 'application/vnd.google-apps.folder' "
+                f"and trashed = false"
+            )
+            resp = self.drive_service.files().list(
+                q=q,
+                fields="files(id, name)",
+                pageSize=1,
+                **extra_kwargs,
+            ).execute()
+            folders = resp.get('files', [])
+            if not folders:
+                return None
+            parent_id = folders[0]['id']
+
+        return parent_id
+
+    def list_documents(self, max_results: int = 50, drive_name: Optional[str] = None,
+                       path: Optional[str] = None) -> dict:
+        """List Google Docs documents.
+
+        Args:
+            max_results: Maximum number of documents to return.
+            drive_name: Name of a shared/team drive. Use None or "My Drive" for
+                        the user's personal drive.
+            path: Slash-separated folder path inside the drive, e.g.
+                  "Projects/Reports".  When omitted the entire drive is searched.
+        """
         if not self.ensure_authenticated():
             return {'success': False, 'error': 'Not authenticated. Run :GDocsAuth first.'}
 
         try:
+            # --- resolve drive -------------------------------------------------
+            drive_id: Optional[str] = None
+            if drive_name:
+                drive_id = self._resolve_drive_id(drive_name)
+                if drive_id is None and drive_name.lower() not in ('my drive', 'mydrive'):
+                    return {
+                        'success': False,
+                        'error': f"Shared drive not found: '{drive_name}'"
+                    }
+
+            # --- resolve folder path -------------------------------------------
+            folder_id: Optional[str] = None
+            if path:
+                folder_id = self._resolve_folder_by_path(path, drive_id)
+                if folder_id is None:
+                    return {
+                        'success': False,
+                        'error': f"Path not found: '{path}'"
+                            + (f" in drive '{drive_name}'" if drive_name else '')
+                    }
+
+            # --- build query ---------------------------------------------------
+            q_parts = ["mimeType='application/vnd.google-apps.document'"]
+            if folder_id:
+                q_parts.append(f"'{folder_id}' in parents")
+            q_parts.append("trashed = false")
+            q = ' and '.join(q_parts)
+
+            extra_kwargs: dict[str, Any] = {}
+            if drive_id:
+                extra_kwargs['corpora'] = 'drive'
+                extra_kwargs['driveId'] = drive_id
+                extra_kwargs['includeItemsFromAllDrives'] = True
+                extra_kwargs['supportsAllDrives'] = True
+
             results = self.drive_service.files().list(
-                q="mimeType='application/vnd.google-apps.document'",
+                q=q,
                 pageSize=max_results,
                 fields="files(id, name, modifiedTime)",
-                orderBy="modifiedTime desc"
+                orderBy="modifiedTime desc",
+                **extra_kwargs,
             ).execute()
 
             files = results.get('files', [])

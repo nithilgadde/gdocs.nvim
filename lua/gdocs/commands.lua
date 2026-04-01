@@ -10,7 +10,8 @@ function M.setup()
   })
 
   vim.api.nvim_create_user_command("GDocsList", M.list, {
-    desc = "List Google Docs",
+    nargs = "*",
+    desc = "List Google Docs (optional: --drive=\"Drive Name\" --path=folder/path)",
   })
 
   vim.api.nvim_create_user_command("GDocsOpen", M.open, {
@@ -52,22 +53,59 @@ function M.auth()
   end)
 end
 
-function M.list()
+---Parse --drive="..." and --path=... flags from a raw argument string.
+---@param args string
+---@return {drive_name: string|nil, path: string|nil}
+local function parse_list_args(args)
+  local result = {}
+
+  -- Match --drive="value" or --drive='value' or --drive=value
+  local drive = args:match('--drive="([^"]*)"')
+    or args:match("--drive='([^']*)'")
+    or args:match("--drive=(%S+)")
+  if drive then
+    result.drive_name = drive
+  end
+
+  -- Match --path="value" or --path='value' or --path=value
+  local path = args:match('--path="([^"]*)"')
+    or args:match("--path='([^']*)'")
+    or args:match("--path=(%S+)")
+  if path then
+    result.path = path
+  end
+
+  return result
+end
+
+function M.list(opts)
+  local params = parse_list_args(opts and opts.args or "")
+
   get_rpc().call("is_authenticated", {}, function(result, err)
     vim.schedule(function()
       if err or not result or not result.authenticated then
         get_gdocs().notify("Not authenticated. Run :GDocsAuth first.", vim.log.levels.WARN)
         return
       end
-      M._fetch_and_show_list()
+      M._fetch_and_show_list(params)
     end)
   end)
 end
 
-function M._fetch_and_show_list()
+function M._fetch_and_show_list(params)
   get_gdocs().notify("Fetching documents...")
 
-  get_rpc().call("list", { max_results = 50 }, function(result, err)
+  local rpc_params = { max_results = 50 }
+  if params then
+    if params.drive_name then
+      rpc_params.drive_name = params.drive_name
+    end
+    if params.path then
+      rpc_params.path = params.path
+    end
+  end
+
+  get_rpc().call("list", rpc_params, function(result, err)
     vim.schedule(function()
       if err then
         get_gdocs().notify("Error: " .. err, vim.log.levels.ERROR)
